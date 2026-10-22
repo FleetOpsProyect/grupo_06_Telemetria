@@ -1,10 +1,10 @@
 """Entidad de dominio agregada Ruta para el arquetipo de microservicio."""
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 
-class RouteStatus(str, Enum):
+class RouteStatus(StrEnum):
     """Catálogo de estados de una ruta."""
 
     EN_CURSO = "EN_CURSO"
