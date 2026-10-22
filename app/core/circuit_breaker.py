@@ -3,7 +3,7 @@
 import threading
 import time
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from typing import Any, TypeVar
 
 from app.core.exceptions import CircuitBreakerOpenError
@@ -12,7 +12,7 @@ from app.core.logging import logger
 T = TypeVar("T")
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     """Estados posibles del Circuit Breaker."""
 
     CLOSED = "CLOSED"

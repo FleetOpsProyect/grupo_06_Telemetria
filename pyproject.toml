@@ -42,7 +42,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
-ignore = ["B008", "UP046"]  # B008: FastAPI Depends(), UP046: TypeVar Generic[T] compatibility
+ignore = ["B008", "UP042", "UP046"]  # B008: FastAPI Depends(), UP042/UP046: enum/generic compatibility
 
 [tool.mypy]
 python_version = "3.12"
