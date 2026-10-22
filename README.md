@@ -1,42 +1,82 @@
-# FleetOps — Telemetría y Rutas (Grupo 06)
+# FleetOps — Telemetría y Rutas (Grupo 06) — Arquetipo Base
 
-Microservicio encargado del ciclo de vida de los recorridos operativos de la flota de vehículos, simulación geoespacial de telemetría (Haversine), y sincronización de eventos de viaje para combustible, odómetros y auditoría gerencial en el ecosistema **FleetOps**.
+Arquetipo base de microservicio FastAPI bajo **Clean Architecture** para el ecosistema **FleetOps** (Universidad del Valle, Desarrollo de Software III).
 
----
-
-## 📌 Contexto del Proyecto
-
-Forma parte del **Proceso 5: Registro de Combustible y Telemetría (Rutas)**. Su objetivo principal es sistematizar el registro de recorridos vinculándolos obligatoriamente a una asignación activa para eliminar el uso de planillas físicas y permitir la detección oportuna de sobrecostos o consumos anómalos de combustible.
+Este repositorio proporciona la arquitectura de software, infraestructura de contenedores (Docker), pipeline de integración continua (CI) y scaffolding de capas desacopladas, sirviendo como punto de partida para la implementación de las historias de usuario del proyecto.
 
 ---
 
-## 📚 Documentación Técnica Detallada
+## 🏛️ Estructura del Arquetipo (Clean Architecture)
 
-La documentación completa del proyecto ha sido estructurada en la carpeta [`/docs`](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/index.md):
+El proyecto organiza el código separando estrictamente responsabilidades en capas concéntricas:
 
-* 📖 [**01. Contexto de Negocio y Dominio**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/01_contexto_y_negocio.md): Actores, problemática, flujos del sistema y diagramas de interacción.
-* 📋 [**02. Product Backlog Refinado (Historias de Usuario)**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/02_product_backlog_historias_usuario.md): Especificación detallada de **HU-01** a **HU-06** con criterios de aceptación completos.
-* 🏛️ [**03. Documento de Arquitectura de Software (DAS)**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/03_documento_arquitectura_software_das.md): Metas, restricciones, matriz de atributos de calidad ISO 25010 (observables y no observables) y patrones aplicados (Transactional Outbox, Circuit Breaker, Strategy, Idempotent Consumer).
-* 🔌 [**04. Contratos de API REST, Eventos y Modelo de Datos**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/04_contratos_api_y_eventos.md): Especificación OpenAPI de endpoints, payloads JSON, eventos en RabbitMQ y esquemas DDL SQL.
+```text
+grupo_06_Telemetria/
+├── app/
+│   ├── core/                  # Configuraciones, excepciones base, logging y resiliencia
+│   │   ├── config.py          # Settings externalizados con Pydantic Settings
+│   │   ├── exceptions.py      # Jerarquía de errores estandarizada
+│   │   ├── logging.py         # Formato estructurado y correlación
+│   │   ├── circuit_breaker.py # Máquina de estados de resiliencia
+│   │   └── security.py        # Validación de autenticación JWT
+│   ├── domain/                # Capa central de dominio empresarial
+│   │   ├── models/            # Entidades y tipos de valor puros
+│   │   └── ports/             # Interfaces abstractas (repositorios, publishers)
+│   ├── application/           # Casos de uso y orquestación
+│   │   ├── dtos/              # Schemas de entrada/salida y validaciones
+│   │   └── services/          # Servicios de aplicación del arquetipo
+│   ├── infrastructure/        # Adaptadores y drivers externos
+│   │   ├── db/                # Sesión SQLAlchemy y modelos ORM
+│   │   ├── messaging/         # Conexión y publicador para RabbitMQ
+│   │   └── repositories/      # Implementaciones concretas de persistencia
+│   ├── presentation/          # Controladores HTTP y middlewares
+│   │   ├── api/v1/            # Enrutadores de endpoints REST
+│   │   ├── dependencies.py    # Contenedor de Inversión de Control (IoC)
+│   │   ├── exception_handlers.py # Estandarización de errores JSON
+│   │   └── middleware.py      # Middleware de Correlation ID
+│   └── main.py                # Fábrica de aplicación FastAPI
+├── tests/                     # Suite de pruebas automatizadas
+│   ├── unit/                  # Tests unitarios rápidos (AAA pattern)
+│   └── integration/           # Tests end-to-end con SQLite y TestClient
+├── .github/workflows/ci.yml   # Pipeline de CI (Ruff, Mypy, Pytest)
+├── docker-compose.yml         # Entorno local (App + PostgreSQL + RabbitMQ)
+├── Dockerfile                 # Construcción multi-stage de producción
+└── pyproject.toml             # Dependencias y herramientas de calidad
+```
 
 ---
 
-## 🚀 Capacidades y Reglas Principales
+## 🚀 Ejecución Rápida
 
-| Caso de Uso / HU | Método / Canal | Descripción |
-| :--- | :--- | :--- |
-| **HU-01: Iniciar Ruta** | `POST /rutas/iniciar` | Valida asignación en `PENDIENTE` con MS Asignaciones (Circuit Breaker 2s / 5 fallos), guarda ruta `EN_CURSO` en origen FleetCorp (`[3.4516, -76.5320]`) y publica `telemetria.ruta.iniciada`. |
-| **HU-02: Validar Ruta Combustible**| Consumidor / Cola | Valida vigencia de ruta (`EN_CURSO`) para autorizar tanqueos en vía (< 200 ms P95, solo BD local, sin llamadas HTTP salientes). |
-| **HU-03: Finalizar Ruta** | `POST /rutas` | Simulación de viaje con fórmula de **Haversine** (radio 5–25 km, mínimo 0.50 km si < 1 min), persiste `FINALIZADA`, guarda en `outbox_eventos` y publica `telemetria.ruta.finalizada`. |
-| **HU-04: Ruta Interrumpida** | Cola `q.telemetria` | Reacciona a `asignaciones.asignacion.interrumpida`, calcula distancia parcial con Haversine, cambia a `INTERRUMPIDA` y publica odómetro parcial a Vehículos. |
-| **HU-05: Consulta de Rutas** | `GET /rutas` | Consulta paginada (`page`, `size` 1-100) con filtros por estado, fechas, asignación y vehículo (< 1.0 s para soporte a Reportes Operativos). |
-| **HU-06: Endpoint de Salud** | `GET /health` | Sondeo público sin JWT a BD relacional (`SELECT 1`) y RabbitMQ (< 150 ms, responde `200 UP` o `503 SERVICIO_DEGRADADO`). |
+### Requisitos Previos
+* Python 3.12+
+* Docker y Docker Compose
 
----
+### 1. Entorno de Desarrollo Local
+```bash
+# Crear y activar entorno virtual
+python -m venv .venv
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 
-## 🛠️ Principios de Arquitectura
+# Instalar dependencias
+pip install -e ".[dev]"
+```
 
-* **Patrón Transactional Outbox:** Garantiza que los eventos de fin de ruta no se pierdan si el broker RabbitMQ está caído.
-* **Circuit Breaker:** Protege la comunicación saliente hacia el microservicio de Asignaciones.
-* **Idempotencia y Tolerant Reader:** Tabla `eventos_procesados` para deduplicación estricta y lectura tolerante de mensajes en cola.
-* **Patrón Strategy:** Algoritmo Haversine encapsulado tras interfaz para facilitar migración futura a GPS real sin modificar contratos.
+### 2. Ejecutar Pruebas y Cobertura
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+### 3. Ejecutar Linters de Calidad
+```bash
+ruff check .
+ruff format --check .
+mypy app
+```
+
+### 4. Levantar con Docker Compose
+```bash
+docker compose up --build
+```
+
+El servicio estará disponible en `http://localhost:8000` con documentación interactiva Swagger en `http://localhost:8000/docs`.
