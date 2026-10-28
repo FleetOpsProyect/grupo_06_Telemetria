@@ -36,7 +36,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copiar código fuente
 COPY app/ ./app/
-COPY alembic/ ./alembic/
+
 
 # Configurar permisos
 RUN chown -R appuser:appgroup /app
