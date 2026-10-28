@@ -17,4 +17,5 @@ coverage.xml
 tests
 docs
 *.md
+!README.md
 .env
