@@ -17,10 +17,12 @@ jobs:
       pull-requests: write
     steps:
       - name: PR Agent action step
-        uses: the-pr-agent/pr-agent@main
+        uses: the-pr-agent/pr-agent@d92a9b5f54316717a233e7215cb2efdde4ad84a2 # the-pr-agent/pr-agent@main
         env:
           GROQ.KEY: ${{ secrets.GROQ_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          CONFIG.MODEL: "groq/llama-3.3-70b-versatile"
+          CONFIG.MODEL: "groq/openai/gpt-oss-120b"
+          CONFIG.MODEL_TURBO: "groq/openai/gpt-oss-120b"
+          CONFIG.FALLBACK_MODELS: "['groq/openai/gpt-oss-20b']"
