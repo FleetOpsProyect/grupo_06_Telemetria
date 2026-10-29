@@ -53,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: publish-image
     concurrency: production
+    env:
+      PUBLIC_URL: https://fleetops-telemetria.duckdns.org
 
     steps:
       - name: Pull de la nueva imagen y reinicio en el servidor
@@ -81,3 +83,20 @@ jobs:
             echo "La app no respondió /health a tiempo"
             docker compose -f docker-compose.prod.yml logs --tail 80 telemetria
             exit 1
+
+      # Verificación final desde internet: dominio público + Nginx + HTTPS + app + BD + broker
+      - name: Health check público del backend
+        run: |
+          for i in $(seq 1 10); do
+            if RESPONSE=$(curl -fsS --max-time 10 "${PUBLIC_URL}/health"); then
+              echo "$RESPONSE"
+              if echo "$RESPONSE" | grep -q '"status":"UP"'; then
+                echo "Backend disponible en ${PUBLIC_URL}"
+                exit 0
+              fi
+            fi
+            echo "Intento $i: el backend aún no responde UP, reintentando..."
+            sleep 6
+          done
+          echo "El backend no respondió UP en ${PUBLIC_URL}/health"
+          exit 1
