@@ -24,7 +24,7 @@ class Coordinate:
 
 
 # HU-01: Mientras no exista el GPS fisico, la ruta sale del centro de operaciones de FleetCorp
-CENTRO_OPERACIONES = Coordinate(latitud=-34.6037, longitud=-76.5320)
+CENTRO_OPERACIONES = Coordinate(latitud=3.4516, longitud=-76.5320)
 
 
 class Route:

@@ -47,14 +47,7 @@ class RouteService:
         saved = self.route_repo.save(route)
         logger.info(f"Ruta creada exitosamente en arquetipo: {saved.id}")
 
-        return RouteResponseDTO(
-            id=saved.id,
-            asignacion_id=saved.asignacion_id,
-            vehiculo_id=saved.vehiculo_id,
-            conductor_id=saved.conductor_id,
-            estado=saved.estado.value,
-            hora_inicio=saved.hora_inicio.isoformat(),
-        )
+        return RouteResponseDTO.from_domain(saved)
 
     def get_route_by_id(self, route_id: str) -> RouteResponseDTO:
         """
@@ -68,11 +61,4 @@ class RouteService:
                 f"No existe una ruta con id {route_id}", code="RUTA_NO_ENCONTRADA"
             )
 
-        return RouteResponseDTO(
-            id=route.id,
-            asignacion_id=route.asignacion_id,
-            vehiculo_id=route.vehiculo_id,
-            conductor_id=route.conductor_id,
-            estado=route.estado.value,
-            hora_inicio=route.hora_inicio.isoformat(),
-        )
+        return RouteResponseDTO.from_domain(route)
