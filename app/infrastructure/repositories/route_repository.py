@@ -6,7 +6,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import DatabaseUnavailableError, DuplicateEntityError 
+from app.core.exceptions import DatabaseUnavailableError, DuplicateEntityError
 from app.domain.models.route import Coordinate, Route, RouteStatus
 from app.domain.ports.repositories import IRouteRepository
 from app.infrastructure.db.orm_models import RouteModel
@@ -59,6 +59,7 @@ class SqlAlchemyRouteRepository(IRouteRepository):
                 )
             )
             self.session.flush()  # Detectar errores de integridad
+            return route
         except IntegrityError as e:
             self.session.rollback()
             raise DuplicateEntityError(

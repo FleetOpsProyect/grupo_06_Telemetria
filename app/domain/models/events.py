@@ -13,7 +13,7 @@ ROUTE_STARTED_EVENT = "RutaIniciadaEvent"
 ROUTE_STARTED_ROUTING_KEY = "telemetria.ruta.iniciada"
 
 
-def route_started_data(route: Route) -> dict[str]:
+def route_started_data(route: Route) -> dict[str, object]:
     """Construye el bloque de datos de RutaIniciadaEvent a partir de la entidad de Route."""
     return {
         "ruta_id": route.id,
