@@ -15,6 +15,20 @@ class SqlAlchemyOutboxRepository(IOutboxRepository):
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def add(self, record: OutboxRecord) -> None:
+        """Agrega un nuevo evento a la tabla outbox dentro de la transacción activa."""
+        self.session.add(
+            OutboxModel(
+                id=record.id,
+                evento_id=record.evento_id,
+                tipo_evento=record.tipo_evento,
+                routing_key=record.routing_key,
+                payload_json=record.payload_json,
+                estado=record.estado,
+                intentos=record.intentos,
+            )
+        )
+
     def save(self, record: OutboxRecord) -> OutboxRecord:
         """Inserta un evento outbox en la transacción de base de datos."""
         model = OutboxModel(
