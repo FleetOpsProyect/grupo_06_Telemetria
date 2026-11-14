@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         default="/asignaciones/{asignacion_id}", description="Ruta para obtener asignación por ID"
     )
     assignments_timeout_seconds: float = Field(
-        default=5.0,
+        default=2.0,
         description="Tiempo de espera para llamadas HTTP al microservicio de Asignaciones",
     )
 

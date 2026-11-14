@@ -158,3 +158,5 @@ def test_503_dependencia_no_disponible_sin_persistir(
     assert response.status_code == 503
     assert response.json()["codigo"] == "DEPENDENCIA_NO_DISPONIBLE"
     assert db_session.execute(select(OutboxModel)).first() is None
+
+
