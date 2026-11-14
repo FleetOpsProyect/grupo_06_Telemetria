@@ -43,4 +43,4 @@ class TestRouteModel:
 
         assert route.estado == RouteStatus.EN_CURSO
         assert route.origen == CENTRO_OPERACIONES
-        assert (route.origen.latitud, route.origen.longitud) == (-34.6037, -76.5320)
+        assert (route.origen.latitud, route.origen.longitud) == (3.4516, -76.5320)
