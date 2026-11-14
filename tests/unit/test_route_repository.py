@@ -1,7 +1,6 @@
 """Tests de repositorios y unidad de trabajo contra SQLite en memoria (HU-01)."""
 
 import pytest
-from app.infrastructure.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -11,6 +10,7 @@ from app.domain.ports.repositories import OutboxRecord
 from app.infrastructure.db.orm_models import OutboxModel, RouteModel
 from app.infrastructure.repositories.outbox_repository import SqlAlchemyOutboxRepository
 from app.infrastructure.repositories.route_repository import SqlAlchemyRouteRepository
+from app.infrastructure.repositories.unit_of_work import SqlAlchemyUnitOfWork
 
 
 def _route(asignacion_id: str, route_id: str = "r1") -> Route:

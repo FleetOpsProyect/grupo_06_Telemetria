@@ -37,6 +37,19 @@ class Settings(BaseSettings):
         default=10, description="Mensajes máximos no confirmados por consumidor"
     )
 
+    # Integracion sincrona con el MS de Asignaciones (HU-01)
+    assignments_base_url: str = Field(
+        default="http://localhost:8001/api/v1",
+        description="URL base del microservicio de Asignaciones",
+    )
+    assignments_get_path: str = Field(
+        default="/asignaciones/{asignacion_id}", description="Ruta para obtener asignación por ID"
+    )
+    assignments_timeout_seconds: float = Field(
+        default=5.0,
+        description="Tiempo de espera para llamadas HTTP al microservicio de Asignaciones",
+    )
+
     # Parámetros del Circuit Breaker (Patrón de resiliencia)
     circuit_breaker_failure_threshold: int = Field(
         default=5, description="Fallos consecutivos para abrir circuito"
