@@ -1,9 +1,9 @@
 """DTOs de ejemplo transaccional para el arquetipo (Creación y Consulta de Rutas)."""
 
 from pydantic import BaseModel, Field, field_validator
-from app.domain.models.route import Route
 
 from app.core.exceptions import ValidationError
+from app.domain.models.route import Route
 
 
 class RouteCreateDTO(BaseModel):
