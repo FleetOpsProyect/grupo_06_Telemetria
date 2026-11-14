@@ -1,14 +1,24 @@
 """Implementación concreta del repositorio de rutas mediante SQLAlchemy."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import DatabaseUnavailableError
-from app.domain.models.route import Route, RouteStatus
+from app.core.exceptions import DatabaseUnavailableError, DuplicateEntityError 
+from app.domain.models.route import Coordinate, Route, RouteStatus
 from app.domain.ports.repositories import IRouteRepository
 from app.infrastructure.db.orm_models import RouteModel
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Normaliza a UTC: SQLite devuelve fechas sin zona y PostgreSQL devuelve fechas con zona."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class SqlAlchemyRouteRepository(IRouteRepository):
@@ -25,9 +35,38 @@ class SqlAlchemyRouteRepository(IRouteRepository):
             vehiculo_id=model.vehiculo_id,
             conductor_id=model.conductor_id,
             estado=RouteStatus(model.estado),
-            hora_inicio=model.hora_inicio,
-            hora_fin=model.hora_fin,
+            hora_inicio=_as_utc(model.hora_inicio),
+            hora_fin=_as_utc(model.hora_fin),
+            origen=Coordinate(
+                latitud=float(model.latitud_origen), longitud=float(model.longitud_origen)
+            ),
         )
+
+    def add(self, route: Route) -> Route:
+        """Agrega una nueva ruta a la base de datos dentro de la transaccion activa"""
+        try:
+            self.session.add(
+                RouteModel(
+                    id=route.id,
+                    asignacion_id=route.asignacion_id,
+                    vehiculo_id=route.vehiculo_id,
+                    conductor_id=route.conductor_id,
+                    estado=route.estado.value,
+                    hora_inicio=route.hora_inicio,
+                    hora_fin=route.hora_fin,
+                    latitud_origen=route.origen.latitud,
+                    longitud_origen=route.origen.longitud,
+                )
+            )
+            self.session.flush()  # Detectar errores de integridad
+        except IntegrityError as e:
+            self.session.rollback()
+            raise DuplicateEntityError(
+                f"Ruta con asignacion_id {route.asignacion_id} ya existe."
+            ) from e
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            raise DatabaseUnavailableError(f"Error al agregar ruta: {e}") from e
 
     def save(self, route: Route) -> Route:
         """Inserta o actualiza una ruta en la base de datos dentro de la transacción activa."""
@@ -42,6 +81,8 @@ class SqlAlchemyRouteRepository(IRouteRepository):
                     estado=route.estado.value,
                     hora_inicio=route.hora_inicio,
                     hora_fin=route.hora_fin,
+                    latitud_origen=route.origen.latitud,
+                    longitud_origen=route.origen.longitud,
                 )
                 self.session.add(model)
             else:
