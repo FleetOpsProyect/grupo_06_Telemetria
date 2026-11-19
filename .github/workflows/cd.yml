@@ -2,7 +2,7 @@ name: CD
 
 # Despliegue continuo (guía del dojo, sección 8.2).
 # Lo llama ci.yml (job "cd") únicamente después de que pasan las pruebas y el
-# Quality Gate de SonarCloud en un merge a develop o main.
+# Quality Gate de SonarCloud en un merge (PR aprobado) a main.
 on:
   workflow_call:
     secrets:

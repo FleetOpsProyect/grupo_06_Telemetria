@@ -139,45 +139,59 @@ Este documento compila de forma exhaustiva las Historias de Usuario (**HU-01** a
 
 ---
 
-## HU-02: Consultar la Ruta en Curso de una Asignación para Combustible
+## HU-02: Consultar Ruta Activa e Historial Propio del Conductor
 
 | Parámetro | Detalle |
 | :--- | :--- |
 | **Identificador** | **HU-02** |
-| **Rol / Actor** | Sistema (actor interno - MS Combustible) |
-| **Acción** | Requiero consultar la ruta en curso de una asignación mediante sus parámetros de estado. |
-| **Beneficio** | Para obtener el `ruta_id` y verificar que el vehículo esté en un recorrido activo antes de permitir el registro de tanqueos de combustible en la vía. |
+| **Rol / Actor** | Conductor (Operario) |
+| **Acción** | Requiero consultar la información de mi ruta activa actual y de mis rutas anteriores asociadas a mis asignaciones mediante mis credenciales autenticadas. |
+| **Beneficio** | Para conocer en tiempo real el estado, horario, coordenadas y distancia de mi recorrido en curso o revisar el historial de mis trayectos finalizados e interrumpidos, garantizando mediante el middleware de autorización que solo pueda acceder a mis propias rutas. |
 | **Prioridad** | **Alta** |
-| **Dependencias** | Consulta requerida por MS Combustible en el Proceso 5. Sin llamadas salientes HTTP. |
+| **Dependencias** | Middleware de autorización JWT (rol `CONDUCTOR` y extracción de `conductor_id`). Consulta de solo lectura sobre la base de datos local sin llamadas HTTP salientes ni dependencia con Combustible (Combustible mantiene su propia réplica vía ECST). |
 
 ### Criterios de Aceptación
 
-1. **Ubicación y mensaje de entrada (AWS SQS `q.telemetria`):**
-   * La acción ocurre en el consumidor asíncrono de Telemetría al escuchar la cola **AWS SQS** `q.telemetria` suscrita al tópico SNS `fleetops-events` (y también puede ser consultada de forma síncrona mediante `GET /rutas?asignacion_id={id}&estado=EN_CURSO` o `GET /rutas/asignacion/{asignacion_id}` según el Proceso 5).
-   * El mensaje entrante debe incluir obligatoriamente `evento_id`, `asignacion_id`, `vehiculo_id` y `correlation_id`.
-   * Si el mensaje es inválido o faltan datos, se desvía a la DLQ (`q.telemetria.dlq` en AWS SQS) sin reintentos y se registra en log con nivel `ERROR`: *"Mensaje de solicitud de tanqueo incompleto o inválido"*.
+1. **Autorización y extracción de identidad por middleware (JWT):**
+   * Toda petición a `GET /route/assignment/{asignacion_id}` o a la consulta de rutas propias del conductor (`GET /route`) debe pasar por el middleware de autorización con un token JWT válido con rol `CONDUCTOR`.
+   * El sistema debe extraer el `conductor_id` directamente del token autenticado (nunca confiando en un identificador enviado libremente por el cliente en parámetros o cuerpo).
+   * Si falta el token o es inválido, responde `401 Unauthorized` con `codigo: "NO_AUTENTICADO"`.
 
-2. **Ruta activa confirmada (Aprobación - 200 OK equivalente):**
-   * El sistema consulta en su base de datos local (`routes`) si existe una ruta para esa `assignment_id` en estado `EN_CURSO`.
-   * Si existe, confirma el mensaje en SQS (`DeleteMessage`) y publica el evento de aprobación con código lógico `200` (OK), incluyendo `correlation_id`, `ruta_id` y `vehiculo_id` hacia AWS SNS para que Combustible autorice el tanqueo.
+2. **Aislamiento de datos por conductor (Anti-IDOR / 403 Forbidden):**
+   * Al consultar una ruta por `asignacion_id`, el sistema debe verificar que el `conductor_id` registrado en la ruta coincida con el `conductor_id` autenticado en el middleware.
+   * Si la ruta existe pero pertenece a otro conductor, debe rechazar la petición respondiendo `403 Forbidden` con:
+     ```json
+     {
+       "codigo": "ACCESO_DENEGADO",
+       "mensaje": "No tiene permisos para consultar rutas de otro conductor"
+     }
+     ```
 
-3. **Sin ruta activa (Rechazo - 404 Not Found / 409 Conflict):**
-   * Si no existe ruta para la asignación (código lógico `404 Not Found`) o su estado es `FINALIZADA` o `INTERRUMPIDA` (código lógico `409 Conflict`), confirma el mensaje y emite un evento de rechazo con dicho código de estado y `correlation_id`, indicando como motivo: *"No existe ruta activa en curso para la asignación"*, permitiendo que Combustible cancele el registro.
+3. **Consulta de ruta activa o histórica por asignación (`GET /route/assignment/{asignacion_id}` - 200 OK):**
+   * Si `asignacion_id` es válido y pertenece al conductor autenticado, el sistema consulta su base de datos local y responde `200 OK` con `id`, `asignacion_id`, `vehiculo_id`, `conductor_id`, `estado` (`EN_CURSO`, `FINALIZADA` o `INTERRUMPIDA`), `hora_inicio`, `hora_fin` (`null` si está `EN_CURSO`), `distancia_recorrida_km` (`null` si está `EN_CURSO`), `origen` y `destino` (`null` si está `EN_CURSO`).
+   * Si `asignacion_id` está vacío o tiene formato inválido, responde `400 Bad Request` con `codigo: "DATOS_INVALIDOS"`.
 
-4. **Frontera y restricciones de negocio:**
-   * La validación se resuelve **exclusivamente con la base de datos local de Telemetría**, con cero llamadas HTTP hacia otros servicios.
-   * El microservicio tiene restringido validar costos, galones o mutar datos de la ruta; su única atribución es verificar la vigencia del viaje.
+4. **Consulta del historial propio de rutas del conductor (`GET /route` filtrado por middleware - 200 OK):**
+   * Cuando un usuario con rol `CONDUCTOR` solicita sus rutas (activa y anteriores), el middleware de autorización restringe automáticamente la consulta al `conductor_id` del token.
+   * Permite filtrar opcionalmente por `estado` (`EN_CURSO`, `FINALIZADA`, `INTERRUMPIDA`) y paginar (`page`, `size`), devolviendo los resultados ordenados descendentemente por `hora_inicio`.
+   * Si el conductor aún no tiene rutas registradas, responde `200 OK` con `contenido: []` y `total: 0`.
 
-5. **Idempotencia y solo lectura:**
-   * El sistema valida el identificador `evento_id` en su tabla local `processed_events`.
-   * Si el mensaje ya fue atendido, se confirma de inmediato en SQS sin duplicar eventos de salida ni alterar registros en base de datos.
+5. **Sin ruta registrada para la asignación (404 Not Found):**
+   * Si no existe ninguna ruta asociada a `asignacion_id`, responde `404 Not Found` con:
+     ```json
+     {
+       "codigo": "RUTA_NO_ENCONTRADA",
+       "mensaje": "No existe una ruta asociada a la asignación <asignacion_id>"
+     }
+     ```
 
-6. **Rendimiento:**
-   * El procesamiento completo (consumo, validación local y emisión de respuesta) debe ejecutarse en **menos de 200 ms (P95)**, respaldado por un índice compuesto sobre `(assignment_id, status)` en `routes`.
+6. **Frontera y solo lectura:**
+   * La consulta se resuelve **exclusivamente contra la base de datos local de Telemetría** (cero llamadas HTTP hacia otros microservicios) y no tiene ninguna asociación con el microservicio de Combustible (que gestiona su propia réplica de datos mediante *Event-Carried State Transfer*).
+   * Es una operación estrictamente de solo lectura que no muta estados ni atributos de las rutas.
 
-7. **Fallo de persistencia y reintentos (503 Service Unavailable):**
-   * Si la base de datos local no responde durante la verificación, el mensaje se reintenta hasta **3 veces** con espera creciente (*backoff* / `VisibilityTimeout` en SQS).
-   * Si el fallo persiste, la *Redrive Policy* de SQS o el manejador lo desvía a la DLQ (`q.telemetria.dlq`), se tipifica con código `503` y se escribe en el log como `ERROR`: *"Fallo de persistencia local al validar ruta para combustible"*.
+7. **Rendimiento y fallo de persistencia (503 Service Unavailable):**
+   * La consulta debe responder en **menos de 200 ms (P95)** y timeout máximo de `1.0 s`, respaldada por índices locales sobre `(assignment_id, status)` y `driver_id`.
+   * Si la base de datos local no responde, el sistema responde `503 Service Unavailable` con `codigo: "SERVICIO_NO_DISPONIBLE"` y escribe el fallo en el log con nivel `ERROR`.
 
 ---
 
