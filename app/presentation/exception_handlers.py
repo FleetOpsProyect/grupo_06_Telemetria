@@ -1,5 +1,7 @@
 """Manejador global de excepciones para estandarizar las respuestas JSON de error."""
 
+from typing import Any
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -15,6 +17,13 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.core.logging import logger
+
+_REQUIRED_FIELDS_ERROR_TYPES = frozenset({"missing", "string_too_short"})
+
+
+def _is_required_field_error(err: Any) -> bool:
+    """Indica si el error de validacion corresponde a un campo requerido faltante o vacío."""
+    return isinstance(err, dict) and err.get("type") in _REQUIRED_FIELDS_ERROR_TYPES
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -63,11 +72,16 @@ def register_exception_handlers(app: FastAPI) -> None:
             errores.append({"campo": campo, "detalle": msg})
 
         codigo = "JSON_INVALIDO" if is_json_invalid else "DATOS_INVALIDOS"
-        mensaje = (
-            "El formato del cuerpo JSON es inválido"
-            if is_json_invalid
-            else "Los datos de la petición son inválidos"
-        )
+        required_field_error = len(exc.errors()) == 1 and _is_required_field_error(exc.errors()[0])
+
+        if is_json_invalid:
+            mensaje = "El cuerpo de la solicitud no es un JSON válido"
+        elif required_field_error:
+            loc = exc.errors()[0].get("loc", ())
+            campo = str(loc[-1]) if loc else "requerido"
+            mensaje = f"El campo {campo} es obligatorio"
+        else:
+            mensaje = "Los datos de la solicitud no cumplen con las validaciones"
 
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
