@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import BigInteger, Float
 
 from app.infrastructure.db.session import Base
 
@@ -72,3 +73,16 @@ class ProcessedEventModel(Base):
     procesado_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+
+
+class TravelPlanModel(Base):
+    """Plan recibido por evento, independiente de cuándo se crea la ruta."""
+
+    __tablename__ = "planes_viaje"
+
+    asignacion_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    latitud_origen: Mapped[float] = mapped_column(Float)
+    longitud_origen: Mapped[float] = mapped_column(Float)
+    latitud_destino: Mapped[float] = mapped_column(Float)
+    longitud_destino: Mapped[float] = mapped_column(Float)
+    duracion_estimada_segundos: Mapped[int] = mapped_column(BigInteger)
