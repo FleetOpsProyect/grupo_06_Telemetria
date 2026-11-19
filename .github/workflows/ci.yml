@@ -65,8 +65,8 @@ jobs:
           args: >
             -Dsonar.qualitygate.wait=true
 
-  # Despliegue continuo: llama a cd.yml solo si las pruebas pasaron (el Quality Gate
-  # ya se validó en el PR) y solo cuando se mergea un Pull Request a main (nunca en develop ni en PRs sin mergear)
+  # Despliegue continuo: llama a cd.yml solo si las pruebas y el Quality Gate pasaron
+  # y solo cuando se mergea un Pull Request a main (nunca en develop ni en PRs sin mergear)
   cd:
     name: CD
     needs: quality
