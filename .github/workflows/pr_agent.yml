@@ -20,9 +20,7 @@ jobs:
         uses: the-pr-agent/pr-agent@c1451f9ae1a00a2d8539640b1f0aa22659dc05a1 # the-pr-agent/pr-agent@main
         env:
           OPENAI_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
-          OPENAI.KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
           OPENAI_API_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
-          OPENAI.API_BASE: "https://ai-gateway.vercel.sh/v1"
           OPENAI_API_BASE: "https://ai-gateway.vercel.sh/v1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
