@@ -33,13 +33,13 @@ El servicio gestiona el ciclo de vida de una ruta: inicio, finalización con cá
 ---
 ### Endpoints
 
-| Método | Ruta | Auth | Rol | Timeout |
-|---|---|---|---|---|
-| POST | `/route/start` | JWT Cognito | Conductor (Operador) | 2 s hacia Asignaciones |
-| POST | `/route` | JWT Cognito | Conductor (Operador) | — |
-| GET | `/route` | JWT Cognito | Gerencia / Administrador de flota | 1.0 s |
-| GET | `/route/{id}` | JWT Cognito | Gerencia / Administrador de flota | 1.0 s |
-| GET | `/health` | Público (sin token) | Ninguno | 150 ms |
+| Método | Ruta          | HU    | Autenticacion de Pasarela | Autorización de Rol               | Timeout                | Nota
+|--------|---------------|-------|---------------------------|-----------------------------------|------------------------|-------------------------------------------------------------------------------------------
+| POST   | `/route/start`| HU-01 |JWT Cognito (requerido)    | Conductor (Operador)              | 2 s hacia Asignaciones | Dependencia sincrónica GET /assignments/{id}; Cortocircuito (Circuit Breaker) 5 fallos /30s
+| POST   | `/route`      | HU-03 |JWT Cognito (requerido)    | Conductor (Operador)              | 2 s (self-contained)   | Simulación de Haversine; patrón outbox si AWS SNS/SQS
+| GET    | `/route`      | HU-05 |JWT Cognito (requerido)    | Gerencia / Administrador de flota | 1.0 s (Reportes)       | Paginado, filtros por estado, asignación, vehículo y fechas
+| GET    | `/route/{id}` | HU-05 |JWT Cognito (requerido)    | Gerencia / Administrador de flota | 1.0 s (Reportes)       | 404 ROUTE_NOT_FOUND si no existe
+| GET    | `/health`     | HU-06 |Público (sin token)        |         Ninguno                   | 150 ms                 | Sondas de Kubernetes/Docker y balanceador de carga de AWS; 503
 ---
 
 ## 🏛️ Estructura del Arquetipo (Clean Architecture)
