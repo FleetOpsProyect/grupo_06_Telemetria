@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text
+from sqlalchemy import DateTime, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db.session import Base
@@ -20,6 +20,12 @@ class RouteModel(Base):
     estado: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     hora_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     hora_fin: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    latitud_origen: Mapped[float] = mapped_column(
+        Numeric(10, 6, asdecimal=False), nullable=False, default=-3.4516
+    )
+    longitud_origen: Mapped[float] = mapped_column(
+        Numeric(10, 6, asdecimal=False), nullable=False, default=-76.5320
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -22,12 +22,28 @@ class OutboxRecord:
     sent_at: datetime | None = None
 
 
+class IUnitOfWork(ABC):
+    """Puerto para la unidad de trabajo (Unit of Work) que coordina transacciones."""
+
+    @abstractmethod
+    def commit(self) -> None:
+        """Confirma los cambios en la base de datos."""
+
+    @abstractmethod
+    def rollback(self) -> None:
+        """Revierte los cambios en caso de error."""
+
+
 class IRouteRepository(ABC):
     """Puerto para el repositorio de rutas operativas."""
 
     @abstractmethod
     def save(self, route: Route) -> Route:
         """Persiste o actualiza una ruta en la base de datos."""
+
+    @abstractmethod
+    def add(self, route: Route) -> Route:
+        """Agrega una nueva ruta a la base de datos."""
 
     @abstractmethod
     def get_by_id(self, route_id: str) -> Route | None:
@@ -61,6 +77,10 @@ class IOutboxRepository(ABC):
     @abstractmethod
     def save(self, record: OutboxRecord) -> OutboxRecord:
         """Guarda un evento en la tabla outbox dentro de la transacción activa."""
+
+    @abstractmethod
+    def add(self, record: OutboxRecord) -> OutboxRecord:
+        """Agrega un nuevo evento a la tabla outbox."""
 
     @abstractmethod
     def get_pending(self, limit: int = 50) -> list[OutboxRecord]:

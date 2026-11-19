@@ -63,7 +63,6 @@ omit = [
     "*/tests/*",
     "*/alembic/*",
     "app/presentation/api/v1/router.py",
-    "app/infrastructure/http_clients/*",
     "app/infrastructure/messaging/*",
 ]
 
