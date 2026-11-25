@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.infrastructure.db.session import Base, engine
+from app.infrastructure.db.session import Base, SessionLocal, engine
+from app.infrastructure.messaging.workers import MessagingWorkers
 from app.presentation.api.health import router as health_router
 from app.presentation.api.v1.router import api_v1_router
 from app.presentation.exception_handlers import register_exception_handlers
@@ -26,7 +27,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"No fue posible auto-crear tablas de BD al inicio: {e}")
 
+    # Workers de SNS (outbox) y SQS (consumidor) solo si hay tópico y cola configurados
+    workers: MessagingWorkers | None = None
+    if settings.messaging_workers_enabled and settings.messaging_configured:
+        workers = MessagingWorkers(SessionLocal)
+        workers.start()
+    else:
+        logger.info("Mensajería SNS/SQS sin configurar: workers no iniciados.")
+
     yield
+
+    if workers:
+        workers.stop()
 
     logger.info(f"Apagando {settings.app_name}...")
 
