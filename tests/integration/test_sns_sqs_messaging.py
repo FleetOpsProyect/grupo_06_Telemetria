@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 from app.domain.models.route import Route, RouteStatus
+from app.infrastructure.messaging import workers as workers_module
 from app.infrastructure.messaging.connection import reset_messaging_health_cache
 from app.infrastructure.messaging.consumers.sqs_consumer import (
     SqsAssignmentConsumer,
@@ -199,35 +200,61 @@ def _wait_until(condition: Any, timeout: float = 10.0) -> bool:
     return False
 
 
-def test_workers_publican_outbox_y_consumen_cola(
-    aws: dict[str, Any], db_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(settings, "sqs_wait_time_seconds", 0)
-    monkeypatch.setattr(settings, "outbox_dispatch_interval_seconds", 0.05)
+def test_workers_consumen_cola_y_publican_outbox(aws: dict[str, Any], db_session: Session) -> None:
+    """Un ciclo de cada worker, sin hilos: determinista también en CI."""
     factory = sessionmaker(bind=db_session.get_bind())
+    workers = MessagingWorkers(factory)
     with Session(bind=db_session.get_bind()) as seed:
         SqlAlchemyRouteRepository(seed).save(
             Route("ruta-3", "asig-8472", "veh-1", "cond-1", hora_inicio=START)
         )
-    publish_as_asignaciones(aws, plan_message())
-    publish_as_asignaciones(aws, message("AsignacionInterrumpidaEvent"))
 
-    workers = MessagingWorkers(factory)
+    publish_as_asignaciones(aws, plan_message())
+    assert workers.consumer.poll_once(wait_time_seconds=0) == 1
+    publish_as_asignaciones(aws, message("AsignacionInterrumpidaEvent"))
+    assert workers.consumer.poll_once(wait_time_seconds=0) == 1
+
+    assert workers.outbox_once() == 1
+    assert workers.outbox_once() == 0
+
+    received = aws["sqs"].receive_message(QueueUrl=aws["vehiculos_url"], WaitTimeSeconds=0)
+    body = json.loads(unwrap_sns_envelope(received["Messages"][0]["Body"]))
+    assert body["tipo_evento"] == "RutaFinalizadaEvent"
+
+
+def test_hilos_de_workers_arrancan_se_recuperan_y_se_detienen(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Los ciclos siguen vivos aunque una vuelta falle, y stop() los detiene."""
+    monkeypatch.setattr(settings, "outbox_dispatch_interval_seconds", 0.01)
+    monkeypatch.setattr(workers_module, "CONSUMER_ERROR_BACKOFF_SECONDS", 0.01)
+    calls = {"outbox": 0, "consumer": 0}
+
+    class FakeWorkers(MessagingWorkers):
+        def outbox_once(self) -> int:
+            calls["outbox"] += 1
+            if calls["outbox"] == 1:
+                raise RuntimeError("fallo transitorio del outbox")
+            return 0
+
+        def consumer_once(self) -> int:
+            calls["consumer"] += 1
+            if calls["consumer"] == 1:
+                raise RuntimeError("fallo transitorio de SQS")
+            time.sleep(0.01)
+            return 0
+
+    workers = FakeWorkers(
+        sessionmaker(),
+        publisher=SnsEventPublisher(topic_arn="arn:aws:sns:us-east-2:1:t"),
+        consumer=SqsAssignmentConsumer(sessionmaker(), queue_url="http://cola"),
+    )
     workers.start()
     try:
-        received: list[dict[str, Any]] = []
-
-        def vehiculos_recibio() -> bool:
-            resp = aws["sqs"].receive_message(QueueUrl=aws["vehiculos_url"], WaitTimeSeconds=0)
-            received.extend(resp.get("Messages", []))
-            return bool(received)
-
-        assert _wait_until(vehiculos_recibio)
+        assert _wait_until(lambda: calls["outbox"] >= 3 and calls["consumer"] >= 3)
     finally:
         workers.stop(timeout=5)
-    assert (
-        json.loads(unwrap_sns_envelope(received[0]["Body"]))["tipo_evento"] == "RutaFinalizadaEvent"
-    )
+    assert all(not thread.is_alive() for thread in workers._threads)
 
 
 def test_lifespan_arranca_workers_si_hay_mensajeria(
