@@ -1,6 +1,7 @@
 """Flujo SNS/SQS de Telemetría simulado con moto (no se llama a AWS real)."""
 
 import json
+import time
 from collections.abc import Generator
 from typing import Any
 
@@ -21,8 +22,10 @@ from app.infrastructure.messaging.publisher import (
     SnsEventPublisher,
     dispatch_pending_outbox_events,
 )
+from app.infrastructure.messaging.workers import MessagingWorkers
 from app.infrastructure.repositories.outbox_repository import SqlAlchemyOutboxRepository
 from app.infrastructure.repositories.route_repository import SqlAlchemyRouteRepository
+from app.main import app
 from tests.integration.test_assignment_message_flow import START, message, plan_message
 
 REGION = "us-east-2"
@@ -185,3 +188,84 @@ def test_health_falla_en_produccion_sin_mensajeria(
     monkeypatch.setattr(settings, "environment", "production")
     response = client.get("/health")
     assert response.status_code == 503
+
+
+def _wait_until(condition: Any, timeout: float = 10.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def test_workers_publican_outbox_y_consumen_cola(
+    aws: dict[str, Any], db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "sqs_wait_time_seconds", 0)
+    monkeypatch.setattr(settings, "outbox_dispatch_interval_seconds", 0.05)
+    factory = sessionmaker(bind=db_session.get_bind())
+    with Session(bind=db_session.get_bind()) as seed:
+        SqlAlchemyRouteRepository(seed).save(
+            Route("ruta-3", "asig-8472", "veh-1", "cond-1", hora_inicio=START)
+        )
+    publish_as_asignaciones(aws, plan_message())
+    publish_as_asignaciones(aws, message("AsignacionInterrumpidaEvent"))
+
+    workers = MessagingWorkers(factory)
+    workers.start()
+    try:
+        received: list[dict[str, Any]] = []
+
+        def vehiculos_recibio() -> bool:
+            resp = aws["sqs"].receive_message(QueueUrl=aws["vehiculos_url"], WaitTimeSeconds=0)
+            received.extend(resp.get("Messages", []))
+            return bool(received)
+
+        assert _wait_until(vehiculos_recibio)
+    finally:
+        workers.stop(timeout=5)
+    assert (
+        json.loads(unwrap_sns_envelope(received[0]["Body"]))["tipo_evento"] == "RutaFinalizadaEvent"
+    )
+
+
+def test_lifespan_arranca_workers_si_hay_mensajeria(
+    aws: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "messaging_workers_enabled", True)
+    started: list[str] = []
+    monkeypatch.setattr(MessagingWorkers, "start", lambda self: started.append("start"))
+    monkeypatch.setattr(MessagingWorkers, "stop", lambda self, timeout=25.0: started.append("stop"))
+    with TestClient(app):
+        pass
+    assert started == ["start", "stop"]
+
+
+def test_publisher_devuelve_false_si_sns_falla(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Roto:
+        def publish(self, **_: Any) -> None:
+            raise RuntimeError("sin red")
+
+    publisher = SnsEventPublisher(topic_arn="arn:aws:sns:us-east-2:1:t", client=Roto())
+    assert publisher.publish("telemetria.ruta.finalizada", "no-json") is False
+
+
+def test_health_down_si_aws_no_responde(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    monkeypatch.setattr(settings, "aws_region", REGION)
+    monkeypatch.setattr(settings, "sns_topic_arn", "arn:aws:sns:us-east-2:1:no-existe")
+    monkeypatch.setattr(settings, "sqs_queue_url", "http://127.0.0.1:9/cola")
+    monkeypatch.setattr(settings, "aws_endpoint_url", "http://127.0.0.1:9")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    reset_messaging_health_cache()
+    try:
+        response = client.get("/health")
+        assert response.status_code == 503
+        assert response.json()["broker"] == "DOWN"
+        # La segunda consulta sale del caché sin volver a llamar a AWS
+        assert client.get("/health").json()["broker"] == "DOWN"
+    finally:
+        reset_messaging_health_cache()
