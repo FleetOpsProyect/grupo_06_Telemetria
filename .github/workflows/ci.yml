@@ -51,8 +51,13 @@ jobs:
       - name: Pytest - unit & integration tests
         run: pytest --cov=app --cov-report=term-missing --cov-report=xml
 
-      # Análisis estático: si el Quality Gate falla, el job falla y no se publica ni despliega
+      # Análisis estático en cada Pull Request (a develop o main): si el Quality Gate
+      # falla, el PR queda en rojo y no se debe mergear.
+      # No corre en el push a main porque el plan gratuito de SonarCloud solo permite
+      # consultar el Quality Gate de su rama principal (develop) y de los PR; ese código
+      # ya pasó el Quality Gate en el PR que se mergeó.
       - name: SonarCloud - análisis y Quality Gate
+        if: github.event_name == 'pull_request'
         uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -60,8 +65,8 @@ jobs:
           args: >
             -Dsonar.qualitygate.wait=true
 
-  # Despliegue continuo: llama a cd.yml solo si las pruebas y el Quality Gate pasaron
-  # y solo cuando se mergea un Pull Request a main (nunca en develop ni en PRs sin mergear)
+  # Despliegue continuo: llama a cd.yml solo si las pruebas pasaron (el Quality Gate
+  # ya se validó en el PR) y solo cuando se mergea un Pull Request a main (nunca en develop ni en PRs sin mergear)
   cd:
     name: CD
     needs: quality
