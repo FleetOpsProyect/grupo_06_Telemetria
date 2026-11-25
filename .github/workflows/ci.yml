@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop, jep]
+    branches: [main]
   pull_request:
-    branches: [main, master, develop]
+    branches: [develop, main]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install ruff mypy pytest pytest-cov httpx
+          pip install ruff mypy pytest pytest-cov httpx "moto[sns,sqs]==5.2.6"
 
       - name: Ruff - lint
         run: ruff check .
@@ -61,11 +61,11 @@ jobs:
             -Dsonar.qualitygate.wait=true
 
   # Despliegue continuo: llama a cd.yml solo si las pruebas y el Quality Gate pasaron
-  # y solo cuando se mergea a develop o main (nunca en un Pull Request)
+  # y solo cuando se mergea un Pull Request a main (nunca en develop ni en PRs sin mergear)
   cd:
     name: CD
     needs: quality
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/cd.yml
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
