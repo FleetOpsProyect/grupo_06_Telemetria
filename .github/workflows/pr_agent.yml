@@ -1,0 +1,30 @@
+name: PR Agent
+
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+jobs:
+  pr_agent_job:
+    if: ${{ github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: PR Agent action step
+        uses: the-pr-agent/pr-agent@c1451f9ae1a00a2d8539640b1f0aa22659dc05a1 # the-pr-agent/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
+          OPENAI_API_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
+          OPENAI_API_BASE: "https://ai-gateway.vercel.sh/v1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          CONFIG.MODEL: "openai/nvidia/nemotron-3.5-lightning-free"
+          CONFIG.MODEL_TURBO: "openai/nvidia/nemotron-3.5-lightning-free"
+          CONFIG.FALLBACK_MODELS: "['openai/nvidia/nemotron-3.5-lightning-free']"
+          CONFIG.CUSTOM_MODEL_MAX_TOKENS: 32000
