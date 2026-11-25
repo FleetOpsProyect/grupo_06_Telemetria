@@ -15,7 +15,7 @@ from app.domain.ports.repositories import (
 )
 from app.infrastructure.db.session import get_db
 from app.infrastructure.http_clients.assignments_clients import HttpAssignmentsClient
-from app.infrastructure.messaging.publisher import RabbitMQEventPublisher
+from app.infrastructure.messaging.publisher import SnsEventPublisher
 from app.infrastructure.repositories.outbox_repository import SqlAlchemyOutboxRepository
 from app.infrastructure.repositories.processed_event_repo import SqlAlchemyProcessedEventRepository
 from app.infrastructure.repositories.route_repository import SqlAlchemyRouteRepository
@@ -38,8 +38,8 @@ def get_processed_event_repository(db: Session = Depends(get_db)) -> IProcessedE
 
 
 def get_event_publisher() -> IEventPublisher:
-    """Provee el publicador de eventos a RabbitMQ."""
-    return RabbitMQEventPublisher()
+    """Provee el publicador de eventos a AWS SNS."""
+    return SnsEventPublisher()
 
 
 def get_route_service(
