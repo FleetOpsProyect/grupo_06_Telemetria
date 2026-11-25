@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fleetops_telemetria_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-telemetria_db}
+      POSTGRES_USER: ${POSTGRES_USER:-telemetria_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-telemetria_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - telemetria_postgres_data:/var/lib/postgresql/data
+    networks:
+      - fleetops_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-telemetria_user} -d ${POSTGRES_DB:-telemetria_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  telemetria-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fleetops_telemetria_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-telemetria_user}:${POSTGRES_PASSWORD:-telemetria_password}@postgres:5432/${POSTGRES_DB:-telemetria_db}
+      - AWS_REGION=${AWS_REGION:-us-east-2}
+      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN:-}
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL:-}
+      - ASSIGNMENTS_SERVICE_URL=${ASSIGNMENTS_SERVICE_URL:-http://assignments:8001}
+      - ASSIGNMENTS_TIMEOUT_SECONDS=2.0
+      - CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+      - CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS=30.0
+      - PORT=8000
+      - DEBUG=True
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleetops_net
+
+networks:
+  fleetops_net:
+    driver: bridge
+
+volumes:
+  telemetria_postgres_data:
