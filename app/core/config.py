@@ -22,19 +22,29 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=10, description="Tamaño del pool de conexiones")
     db_max_overflow: int = Field(default=20, description="Sobrecarga máxima del pool")
 
-    # Broker de Mensajería (RabbitMQ)
-    rabbitmq_url: str = Field(
-        default="amqp://guest:guest@localhost:5672/", description="URL AMQP del broker"
+    # Mensajería en AWS (SNS para publicar, SQS para consumir)
+    aws_region: str = Field(default="us-east-2", description="Región AWS de SNS y SQS")
+    aws_endpoint_url: str | None = Field(
+        default=None, description="Endpoint alterno (LocalStack o pruebas); vacío en AWS real"
     )
-    rabbitmq_exchange: str = Field(
-        default="fleetops.events", description="Exchange topic de eventos de flota"
+    sns_topic_arn: str = Field(
+        default="", description="ARN del tópico SNS donde Telemetría publica sus eventos"
     )
-    rabbitmq_queue: str = Field(default="q.telemetria", description="Cola principal para eventos")
-    rabbitmq_dlq: str = Field(
-        default="q.telemetria.dlq", description="Cola de mensajes muertos (DLQ)"
+    sqs_queue_url: str = Field(
+        default="", description="URL de la cola SQS de la que Telemetría consume eventos"
     )
-    rabbitmq_prefetch_count: int = Field(
-        default=10, description="Mensajes máximos no confirmados por consumidor"
+    sqs_wait_time_seconds: int = Field(
+        default=20, description="Espera de long polling por cada lectura de SQS (0-20 s)"
+    )
+    sqs_max_messages: int = Field(
+        default=10, description="Mensajes máximos por lectura de SQS (1-10)"
+    )
+    outbox_dispatch_interval_seconds: float = Field(
+        default=5.0, description="Cada cuántos segundos se publican los eventos del outbox"
+    )
+    messaging_workers_enabled: bool = Field(
+        default=True,
+        description="Arranca el publicador del outbox y el consumidor SQS junto con la app",
     )
 
     # Integracion sincrona con el MS de Asignaciones (HU-01)
@@ -70,6 +80,11 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def messaging_configured(self) -> bool:
+        """Indica si hay tópico SNS y cola SQS configurados."""
+        return bool(self.sns_topic_arn and self.sqs_queue_url)
 
 
 # Instancia singleton accesible globalmente
