@@ -14,14 +14,37 @@ from app.infrastructure.messaging.publisher import (
 )
 from app.infrastructure.repositories.outbox_repository import SqlAlchemyOutboxRepository
 
+CONSUMER_ERROR_BACKOFF_SECONDS = 5.0
+
 
 class MessagingWorkers:
     """Arranca y detiene los dos workers de mensajería junto con la aplicación."""
 
-    def __init__(self, session_factory: Callable[[], Session]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], Session],
+        publisher: SnsEventPublisher | None = None,
+        consumer: SqsAssignmentConsumer | None = None,
+    ) -> None:
         self.session_factory = session_factory
+        self.publisher = publisher or SnsEventPublisher()
+        self.consumer = consumer or SqsAssignmentConsumer(session_factory)
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
+
+    def outbox_once(self) -> int:
+        """Publica en SNS un lote de eventos pendientes del outbox."""
+        with self.session_factory() as session:
+            sent = dispatch_pending_outbox_events(
+                SqlAlchemyOutboxRepository(session), self.publisher
+            )
+        if sent:
+            logger.info(f"Outbox: {sent} evento(s) publicados en SNS.")
+        return sent
+
+    def consumer_once(self) -> int:
+        """Hace una lectura de la cola SQS y procesa lo recibido."""
+        return self.consumer.poll_once()
 
     def start(self) -> None:
         for name, target in (
@@ -40,24 +63,17 @@ class MessagingWorkers:
         logger.info("Workers de mensajería SNS/SQS detenidos.")
 
     def _outbox_loop(self) -> None:
-        publisher = SnsEventPublisher()
         while not self._stop.is_set():
             try:
-                with self.session_factory() as session:
-                    sent = dispatch_pending_outbox_events(
-                        SqlAlchemyOutboxRepository(session), publisher
-                    )
-                if sent:
-                    logger.info(f"Outbox: {sent} evento(s) publicados en SNS.")
+                self.outbox_once()
             except Exception as e:
                 logger.error(f"Fallo en el ciclo del outbox: {e}")
             self._stop.wait(settings.outbox_dispatch_interval_seconds)
 
     def _consumer_loop(self) -> None:
-        consumer = SqsAssignmentConsumer(self.session_factory)
         while not self._stop.is_set():
             try:
-                consumer.poll_once()
+                self.consumer_once()
             except Exception as e:
                 logger.error(f"Fallo leyendo la cola SQS: {e}")
-                self._stop.wait(5)
+                self._stop.wait(CONSUMER_ERROR_BACKOFF_SECONDS)
