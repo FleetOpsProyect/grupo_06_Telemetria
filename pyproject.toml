@@ -64,7 +64,6 @@ omit = [
     "*/tests/*",
     "*/alembic/*",
     "app/presentation/api/v1/router.py",
-    "app/infrastructure/messaging/*",
 ]
 
 [tool.coverage.report]
