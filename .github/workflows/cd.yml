@@ -57,6 +57,22 @@ jobs:
       PUBLIC_URL: https://fleetops-telemetria.duckdns.org
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # El docker-compose de producción se versiona en el repo (deploy/) y se copia al
+      # servidor en cada despliegue; el .env con los secretos solo existe en el servidor.
+      - name: Copiar docker-compose.prod.yml al servidor
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: deploy/docker-compose.prod.yml
+          target: /tmp/fleetops-deploy
+          strip_components: 1
+          overwrite: true
+
       - name: Pull de la nueva imagen y reinicio en el servidor
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         env:
@@ -69,9 +85,11 @@ jobs:
           script: |
             set -e
             cd ~/fleetops-telemetria
+            install -m 644 /tmp/fleetops-deploy/docker-compose.prod.yml docker-compose.prod.yml
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+            docker compose -f docker-compose.prod.yml config --quiet
             docker compose -f docker-compose.prod.yml pull telemetria
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             for i in $(seq 1 20); do
               if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
                 echo "Despliegue OK: ${IMAGE_TAG}"
