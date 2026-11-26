@@ -44,9 +44,39 @@ services:
     networks:
       - fleetops_net
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: fleetops_telemetria_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - telemetria-service
+    networks:
+      - fleetops_net
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: fleetops_telemetria_grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - fleetops_net
+
 networks:
   fleetops_net:
     driver: bridge
 
 volumes:
   telemetria_postgres_data:
+  grafana_data:

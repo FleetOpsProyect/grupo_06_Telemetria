@@ -14,6 +14,7 @@ from app.presentation.api.health import router as health_router
 from app.presentation.api.v1.router import api_v1_router
 from app.presentation.exception_handlers import register_exception_handlers
 from app.presentation.middleware import CorrelationIdMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 @asynccontextmanager
@@ -80,6 +81,8 @@ def create_app() -> FastAPI:
     # Endpoints del arquetipo v1 (accesibles con y sin prefijo)
     app.include_router(api_v1_router, prefix=settings.api_v1_prefix)
     app.include_router(api_v1_router)
+    
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
     return app
 

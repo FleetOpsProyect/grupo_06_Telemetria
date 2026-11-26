@@ -158,7 +158,7 @@ Tests --->	Pytest + pytest-cov + httpx
 Calidad ---> Ruff, Mypy, SonarCloud
 Contenedores ---> Docker multi-stage + Docker Compose
 Despliegue --->	AWS EC2
-Monitoreo ---> Prometheus + Grafana
+Monitoreo ---> Prometheus
 cobertura ---> pytest
 ---
 ## inicio rapido
@@ -187,15 +187,15 @@ Se encuentra en .env.example
 
 docker compose up --build
 
-|Servicio        |Puerto        | Verificación                      |
-|----------------|--------------|-----------------------------------|
-|telemetria_api  |8000          |GET /health                        |
-|postgres        |5432          |pg_isready                         |
-|rabbitmq        |5672 / 15672  |Consola en http://localhost:15672  |
-|prometheus      |9090          |http://localhost:9090              |
-|grafana         |3000          |http://localhost:3000              |
+|Servicio          |Puerto       |Verificación                     |
+|------------------|-------------|---------------------------------|
+|telemetria-service|8000         |GET /health                      |
+|postgres          |5432         |pg_isready                       |
+|rabbitmq          |5672 / 15672 |Consola en http://localhost:15672|
+|prometheus        |9090         |http://localhost:9090            |
 
 Documentación interactiva: http://localhost:8000/docs
+Métricas de la API: http://localhost:8000/metrics
 
 - verificar endpoints
 
@@ -267,11 +267,11 @@ EC2_DEPLOY_PATH	   |Ruta con docker-compose.prod.yml y .env
 ---
 ## Monitoreo
 
-|componente    | Endpoint             | Propósito                                               |
-|--------------|----------------------|---------------------------------------------------------|
-|Prometheus    |GET /metrics          |Recolección de métricas del servicio                     |
-|Grafana       |http://localhost:3000 |Dashboards de latencia, errores y consumo de recursos    |
-|Health check  |GET /health           |Probes de Docker y balanceador AWS                       |
+|componente    | Endpoint                    | Propósito                                        |
+|--------------|-----------------------------|--------------------------------------------------|
+|Prometheus    |http://localhost:9090        |Consulta y recolección de métricas de la API      |
+|Métricas API  |http://localhost:8000/metrics|Métricas expuestas por el servicio                |
+|Health check  |GET /health                  |Probes de Docker y balanceador AWS                |
 
 ---
 ## Estado del proyecto
@@ -287,7 +287,7 @@ HU-06 Health check                       ✅    Probes y balanceador
 HU-02 Validación para combustible        ✅    Pendiente de integración
 CI con SonarCloud                        ✅    Quality Gate en cada PR
 CD a AWS EC2                             ✅    Despliegue automático
-Monitoreo Prometheus + Grafana           ✅    Dashboard operativo
+Monitoreo Prometheus                    ✅    Recolección de métricas configurada en Docker Compose
 
 
 ---
