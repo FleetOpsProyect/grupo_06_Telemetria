@@ -184,16 +184,22 @@ class SqlAlchemyRouteRepository(IRouteRepository):
             if estado:
                 stmt = stmt.where(RouteModel.estado == estado.value)
             if fecha_desde:
-                dt_desde = datetime.strptime(fecha_desde, "%Y-%m-%d")
+                dt_desde = datetime.strptime(fecha_desde, "%Y-%m-%d").replace(tzinfo=UTC)
                 stmt = stmt.where(RouteModel.hora_inicio >= dt_desde)
             if fecha_hasta:
-                dt_hasta = datetime.strptime(f"{fecha_hasta} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                dt_hasta = datetime.strptime(
+                    f"{fecha_hasta} 23:59:59", "%Y-%m-%d %H:%M:%S"
+                ).replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=UTC)
                 stmt = stmt.where(RouteModel.hora_inicio <= dt_hasta)
 
             count_stmt = select(func.count()).select_from(stmt.subquery())
             total = self.session.execute(count_stmt).scalar() or 0
 
-            stmt = stmt.order_by(desc(RouteModel.hora_inicio)).offset(page * size).limit(size)
+            stmt = (
+                stmt.order_by(desc(RouteModel.hora_inicio), desc(RouteModel.id))
+                .offset(page * size)
+                .limit(size)
+            )
             models = self.session.execute(stmt).scalars().all()
 
             routes = [self._to_domain(m) for m in models]

@@ -2,10 +2,12 @@
 
 from uuid import uuid4
 
+from app.application.dtos.common import PaginatedResponse
 from app.application.dtos.route import RouteCreateDTO, RouteResponseDTO
-from app.core.exceptions import DuplicateEntityError, EntityNotFoundError
+from app.application.dtos.route_query import RouteDetailDTO, RouteSummaryDTO
+from app.core.exceptions import DuplicateEntityError, EntityNotFoundError, ValidationError
 from app.core.logging import logger
-from app.domain.models.route import Route
+from app.domain.models.route import Route, RouteStatus
 from app.domain.ports.repositories import IRouteRepository
 
 
@@ -62,3 +64,46 @@ class RouteService:
             )
 
         return RouteResponseDTO.from_domain(route)
+
+    def list_routes(
+        self,
+        asignacion_id: str | None = None,
+        vehiculo_id: str | None = None,
+        estado: RouteStatus | None = None,
+        fecha_desde: str | None = None,
+        fecha_hasta: str | None = None,
+        page: int = 0,
+        size: int = 20,
+    ) -> PaginatedResponse[RouteSummaryDTO]:
+        """Lista rutas paginadas con filtros opcionales y orden descendente."""
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            raise ValidationError(
+                message="La fecha_desde no puede ser mayor que fecha_hasta",
+                details=[
+                    {"campo": "fecha_desde", "detalle": "Debe ser menor o igual a fecha_hasta"}
+                ],
+            )
+        routes, total = self.route_repo.list_routes(
+            asignacion_id=asignacion_id,
+            vehiculo_id=vehiculo_id,
+            estado=estado,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+            page=page,
+            size=size,
+        )
+        return PaginatedResponse[RouteSummaryDTO](
+            contenido=[RouteSummaryDTO.from_domain(r) for r in routes],
+            page=page,
+            size=size,
+            total=total,
+        )
+
+    def get_route_detail(self, route_id: str) -> RouteDetailDTO:
+        """consulta el detalle completo de una ruta"""
+        route = self.route_repo.get_by_id(route_id)
+        if not route:
+            raise EntityNotFoundError(
+                f"No existe una ruta con id {route_id}", code="RUTA_NO_ENCONTRADA"
+            )
+        return RouteDetailDTO.from_domain(route)
