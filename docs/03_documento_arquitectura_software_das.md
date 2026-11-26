@@ -29,7 +29,7 @@ Este documento describe las metas, restricciones y decisiones arquitectónicas p
 | **Capacidad de interacción** | *Operabilidad* | Facilitar la operación y control del sistema. | Feedback inmediato, consistencia semántica e idempotencia | Estados unívocos (`EN_CURSO`, `FINALIZADA`, `INTERRUMPIDA`) y respuestas consistentes. |
 | **Capacidad de interacción** | *Auto-descriptividad* | Presentar información adecuada sin interacciones excesivas. | OpenAPI + Códigos HTTP Semánticos | Uso estricto de `200`, `201`, `400`, `404`, `409`, `503`. |
 | **Fiabilidad** | *Ausencia de fallos* | Operar sin fallos bajo condiciones normales de trabajo. | Validación preventiva con DTOs + Tolerant Reader + DLQ | Mensajes de entrada en `q.telemetria` sin `asignacion_id` van directo a `q.telemetria.dlq` sin tumbar el servicio; campos extra se ignoran. |
-| **Fiabilidad** | *Disponibilidad* | Estar accesible y operativo cuando se requiere. | Health Checks (`GET /health`) + Réplicas + Outbox | Sondeo de BD y RabbitMQ en < 150 ms para el ALB de AWS. Si el broker cae, `POST /rutas` sigue respondiendo `200` gracias al Outbox local. |
+| **Fiabilidad** | *Disponibilidad* | Estar accesible y operativo cuando se requiere. | Health Checks (`GET /health`) + Réplicas + Outbox | Sondeo de BD y RabbitMQ en < 150 ms para el ALB de AWS. Si el broker cae, `POST /routes` sigue respondiendo `200` gracias al Outbox local. |
 | **Fiabilidad** | *Tolerancia a fallos* | Operar según lo previsto en presencia de fallos hardware o software. | Circuit Breaker + Outbox + Reintentos con Backoff + ACID Rollback | Circuit breaker hacia Asignaciones (timeout 2s, 5 fallos = 30s open). 3 reintentos en consumidor antes de DLQ. Transacciones ACID con rollback ante errores de persistencia. |
 | **Seguridad** | *Integridad* | Proteger el estado y datos frente a modificaciones no autorizadas o inconsistencias. | TLS/HTTPS + Transacciones ACID + Inmutabilidad + Restricciones de BD | Rutas inmutables (nunca se borran). Control de unicidad de asignación (evita carreras con 409). Coordenadas calculadas en backend para evitar manipulación del cliente. |
 | **Seguridad** | *Responsabilidad* | Rastrear de forma inequívoca las acciones de las entidades. | Logs estructurados + Trazabilidad en BD + Correlación | Identificadores `asignacion_id`, `vehiculo_id`, `conductor_id`, `evento_id` y tablas `outbox_eventos` / `eventos_procesados`. |
@@ -58,7 +58,7 @@ Este documento describe las metas, restricciones y decisiones arquitectónicas p
 | **Eficiencia de desempeño** | *Utilización de recursos* | Paginación en BD + Cacheo local + Replicación | Consumo acotado de memoria eliminando respuestas no paginadas. Soporte de 500 req/s distribuidas. |
 | **Capacidad de interacción** | *Operabilidad interna* | Patrón Command + Backend for Frontend (BFF) | Transiciones atómicas y trazables por comando de inicio/cierre. |
 | **Fiabilidad** | *Capacidad de recuperación* | Backups automatizados + Volúmenes persistentes + Colas durables | Almacén persistente para las rutas (vital para odómetros de flota). Mensajes durables en RabbitMQ y preservación en DLQ. |
-| **Seguridad** | *Resistencia a ataques* | Rate Limiting en API Gateway + Topes de paginación | Máximo `size=100` en `GET /rutas` para evitar ataques de denegación de servicio por agotamiento de memoria. Protección contra ráfagas en `POST /rutas/iniciar`. |
+| **Seguridad** | *Resistencia a ataques* | Rate Limiting en API Gateway + Topes de paginación | Máximo `size=100` en `GET /routes` para evitar ataques de denegación de servicio por agotamiento de memoria. Protección contra ráfagas en `POST /routes/start`. |
 | **Mantenibilidad** | *Modularidad* | Arquitectura en Capas (Routes / Services / Repositories / Events) | Separación total entre la capa HTTP, la lógica de simulación/negocio, la capa de persistencia y los publicadores/consumidores de eventos. |
 | **Flexibilidad** | *Adaptabilidad* | Contenedorización Docker + Database per Service | Empaquetado portable idéntico en desarrollo local y producción AWS EC2. |
 | **Flexibilidad** | *Escalabilidad* | Competing Consumers + Replicación horizontal | Múltiples instancias consumiendo en paralelo de `q.telemetria` con balanceo HTTP respaldado por `GET /health`. |
@@ -72,7 +72,7 @@ Este documento describe las metas, restricciones y decisiones arquitectónicas p
 
 ### 4.1. Transactional Outbox Pattern
 Para garantizar que nunca se emita un evento de fin de ruta sin que la ruta haya quedado efectivamente guardada en la base de datos (o viceversa), el microservicio utiliza el patrón **Transactional Outbox**:
-1. Al invocar `POST /rutas` (fin de ruta), se inicia una transacción en la base de datos.
+1. Al invocar `POST /routes` (fin de ruta), se inicia una transacción en la base de datos.
 2. Se actualiza el registro en la tabla `rutas` (estado `FINALIZADA`, distancia, etc.).
 3. Se inserta un registro en la tabla `outbox_eventos` con el payload de `RutaFinalizadaEvent` y estado `PENDIENTE`.
 4. Se hace commit de la transacción.
@@ -81,7 +81,7 @@ Para garantizar que nunca se emita un evento de fin de ruta sin que la ruta haya
 
 ```mermaid
 flowchart LR
-    A[Petición POST /rutas] --> B[Inicio Transacción BD]
+    A[Petición POST /routes] --> B[Inicio Transacción BD]
     B --> C[UPDATE rutas SET estado = FINALIZADA]
     C --> D[INSERT INTO outbox_eventos]
     D --> E[COMMIT Transacción]

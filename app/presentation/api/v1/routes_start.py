@@ -11,11 +11,11 @@ from app.application.services.start_service import StartRouteService
 from app.core.security import verify_authorization
 from app.presentation.dependencies import get_start_route_service
 
-router = APIRouter(prefix="/rutas", tags=["Rutas"])
+router = APIRouter(prefix="/routes", tags=["Routes"])
 
 
 @router.post(
-    "/iniciar",
+    "/start",
     response_model=RouteResponseDTO,
     status_code=status.HTTP_201_CREATED,
     summary="Iniciar ruta asociada a una asignación (HU-01)",
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/rutas", tags=["Rutas"])
         },
     },
 )
-def iniciar_ruta(
+def start_route(
     dto: RouteStartDTO,
     service: StartRouteService = Depends(get_start_route_service),
     _auth: dict[str, Any] = Depends(verify_authorization),

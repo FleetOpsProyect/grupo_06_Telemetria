@@ -17,7 +17,7 @@ Este documento compila de forma exhaustiva las Historias de Usuario (HU-01 a HU-
 
 ### Criterios de Aceptación
 
-1. **Parámetros del cuerpo (`POST /rutas/iniciar`):**
+1. **Parámetros del cuerpo (`POST /routes/start`):**
    * El sistema debe recibir un cuerpo JSON con el campo obligatorio `asignacion_id` (tipo texto, identificador de la asignación).
    * Si el campo está ausente, vacío o no cumple el formato esperado, el sistema debe responder `400 Bad Request` con:
      ```json
@@ -83,7 +83,7 @@ Este documento compila de forma exhaustiva las Historias de Usuario (HU-01 a HU-
        }
        ```
    * Debe responder código `201 Created` con estos datos.
-   * Un `GET /rutas/{id}` posterior debe devolver exactamente los mismos datos.
+   * Un `GET /routes/{id}` posterior debe devolver exactamente los mismos datos.
 
 6. **Publicación de evento (`RutaIniciadaEvent`):**
    * Tras confirmar el guardado en base de datos, el sistema debe publicar el evento con routing key `telemetria.ruta.iniciada` en el exchange topic `fleetops.events`.
@@ -190,8 +190,8 @@ Este documento compila de forma exhaustiva las Historias de Usuario (HU-01 a HU-
 
 ### Criterios de Aceptación
 
-1. **Parámetros del cuerpo (`POST /rutas`):**
-   * El sistema debe recibir una petición en `POST /rutas` con el cuerpo JSON obligatorio conteniendo `asignacion_id` (o `ruta_id`).
+1. **Parámetros del cuerpo (`POST /routes`):**
+   * El sistema debe recibir una petición en `POST /routes` con el cuerpo JSON obligatorio conteniendo `asignacion_id` (o `ruta_id`).
    * Si el campo no viene, debe responder `400 Bad Request` con:
      ```json
      {
@@ -360,7 +360,7 @@ Este documento compila de forma exhaustiva las Historias de Usuario (HU-01 a HU-
 
 ### Criterios de Aceptación
 
-1. **Parámetros de consulta (`GET /rutas`):**
+1. **Parámetros de consulta (`GET /routes`):**
    * El sistema debe aceptar los siguientes query params opcionales:
      * `asignacion_id` (texto, identificador de la asignación).
      * `vehiculo_id` (texto, identificador del vehículo).
@@ -409,7 +409,7 @@ Este documento compila de forma exhaustiva las Historias de Usuario (HU-01 a HU-
 4. **Lista vacía:**
    * Si ninguna ruta cumple el filtro o `page` supera la última página, responde `200 OK` con `contenido: []` y `total: 0` (nunca `404`).
 
-5. **Consulta por identificador (`GET /rutas/{id}`):**
+5. **Consulta por identificador (`GET /routes/{id}`):**
    * Si el `id` existe, responde `200 OK` con el objeto completo de la ruta incluyendo las coordenadas de origen y destino:
      ```json
      {
