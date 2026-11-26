@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -39,6 +39,18 @@ class SqlAlchemyRouteRepository(IRouteRepository):
             hora_fin=_as_utc(model.hora_fin),
             origen=Coordinate(
                 latitud=float(model.latitud_origen), longitud=float(model.longitud_origen)
+            ),
+            destino=(
+                Coordinate(
+                    latitud=float(model.latitud_destino), longitud=float(model.longitud_destino)
+                )
+                if model.latitud_destino is not None and model.longitud_destino is not None
+                else None
+            ),
+            distancia_recorrida_km=(
+                float(model.distancia_recorrida_km)
+                if model.distancia_recorrida_km is not None
+                else None
             ),
         )
 
@@ -125,6 +137,31 @@ class SqlAlchemyRouteRepository(IRouteRepository):
             return self._to_domain(model) if model else None
         except Exception as e:
             raise DatabaseUnavailableError(f"Fallo al consultar ruta activa: {e}") from e
+
+    def finish(self, route: Route) -> bool:
+        """UPDATE condicional (WHERE estado = EN_CURSO): evita cerrar dos veces la misma ruta."""
+        if route.destino is None:
+            raise ValueError("La ruta finalizada debe tener destino")
+        try:
+            stmt = (
+                update(RouteModel)
+                .where(
+                    RouteModel.id == route.id,
+                    RouteModel.estado == RouteStatus.EN_CURSO.value,
+                )
+                .values(
+                    estado=route.estado.value,
+                    hora_fin=route.hora_fin,
+                    latitud_destino=route.destino.latitud,
+                    longitud_destino=route.destino.longitud,
+                    distancia_recorrida_km=route.distancia_recorrida_km,
+                )
+                .returning(RouteModel.id)
+            )
+            return self.session.execute(stmt).scalar_one_or_none() is not None
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            raise DatabaseUnavailableError(f"Error al finalizar ruta: {e}") from e
 
     def list_routes(
         self,

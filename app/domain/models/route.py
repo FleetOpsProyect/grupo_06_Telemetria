@@ -44,6 +44,8 @@ class Route:
         origen: Coordinate | None = None,
         hora_inicio: datetime | None = None,
         hora_fin: datetime | None = None,
+        destino: Coordinate | None = None,
+        distancia_recorrida_km: float | None = None,
     ) -> None:
         self.id = id
         self.asignacion_id = asignacion_id
@@ -53,6 +55,22 @@ class Route:
         self.origen = origen or CENTRO_OPERACIONES
         self.hora_inicio = hora_inicio or datetime.now(UTC)
         self.hora_fin = hora_fin
+        self.destino = destino
+        self.distancia_recorrida_km = distancia_recorrida_km
+
+    @property
+    def en_curso(self) -> bool:
+        """Indica si la ruta todavía puede finalizarse o interrumpirse."""
+        return self.estado == RouteStatus.EN_CURSO
+
+    def finish(self, hora_fin: datetime, destino: Coordinate, distancia_km: float) -> None:
+        """HU-03: cierra la ruta como FINALIZADA con su destino y distancia recorrida."""
+        if not self.en_curso:
+            raise ValueError("Solo una ruta EN_CURSO puede finalizarse")
+        self.estado = RouteStatus.FINALIZADA
+        self.hora_fin = hora_fin
+        self.destino = destino
+        self.distancia_recorrida_km = distancia_km
 
     @classmethod
     def start_new(
