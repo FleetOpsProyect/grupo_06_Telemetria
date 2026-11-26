@@ -20,7 +20,7 @@ class TestApiRoutesIntegration:
             "vehiculo_id": "veh-101",
             "conductor_id": "cond-201",
         }
-        response = client.post("/api/v1/rutas", json=payload)
+        response = client.post("/api/v1/routes", json=payload)
         assert response.status_code == 201
 
         data = response.json()
@@ -35,10 +35,10 @@ class TestApiRoutesIntegration:
             "vehiculo_id": "veh-101",
             "conductor_id": "cond-201",
         }
-        r1 = client.post("/api/v1/rutas", json=payload)
+        r1 = client.post("/api/v1/routes", json=payload)
         assert r1.status_code == 201
 
-        r2 = client.post("/api/v1/rutas", json=payload)
+        r2 = client.post("/api/v1/routes", json=payload)
         assert r2.status_code == 409
         data = r2.json()
         assert data["codigo"] == "RUTA_DUPLICADA"
@@ -49,7 +49,7 @@ class TestApiRoutesIntegration:
             "vehiculo_id": "veh-101",
             "conductor_id": "cond-201",
         }
-        response = client.post("/api/v1/rutas", json=payload)
+        response = client.post("/api/v1/routes", json=payload)
         assert response.status_code == 400
         data = response.json()
         assert data["codigo"] == "DATOS_INVALIDOS"
@@ -60,15 +60,15 @@ class TestApiRoutesIntegration:
             "vehiculo_id": "veh-101",
             "conductor_id": "cond-201",
         }
-        create_res = client.post("/api/v1/rutas", json=payload)
+        create_res = client.post("/api/v1/routes", json=payload)
         route_id = create_res.json()["id"]
 
-        get_res = client.get(f"/api/v1/rutas/{route_id}")
+        get_res = client.get(f"/api/v1/routes/{route_id}")
         assert get_res.status_code == 200
         assert get_res.json()["id"] == route_id
 
     def test_obtener_ruta_inexistente_retorna_404(self, client: TestClient) -> None:
-        response = client.get("/api/v1/rutas/ruta-no-existe-999")
+        response = client.get("/api/v1/routes/route-not-found-999")
         assert response.status_code == 404
         data = response.json()
         assert data["codigo"] == "RUTA_NO_ENCONTRADA"

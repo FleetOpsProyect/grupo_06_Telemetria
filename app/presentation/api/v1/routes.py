@@ -10,7 +10,7 @@ from app.application.services.route_service import RouteService
 from app.core.security import verify_authorization
 from app.presentation.dependencies import get_route_service
 
-router = APIRouter(prefix="/rutas", tags=["Rutas (Arquetipo)"])
+router = APIRouter(prefix="/routes", tags=["Routes (Archetype)"])
 
 
 @router.post(
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/rutas", tags=["Rutas (Arquetipo)"])
         503: {"model": ErrorResponse, "description": "Servicio de persistencia no disponible"},
     },
 )
-def crear_ruta(
+def create_route(
     dto: RouteCreateDTO,
     service: RouteService = Depends(get_route_service),
     _auth: dict[str, Any] = Depends(verify_authorization),
