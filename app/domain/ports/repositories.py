@@ -58,6 +58,13 @@ class IRouteRepository(ABC):
         """Busca la ruta activa (EN_CURSO) de una asignación."""
 
     @abstractmethod
+    def finish(self, route: Route) -> bool:
+        """
+        Guarda el cierre (FINALIZADA, hora_fin, destino y distancia) solo si la ruta sigue
+        EN_CURSO en la BD. Retorna False si otra petición la cerró primero.
+        """
+
+    @abstractmethod
     def list_routes(
         self,
         asignacion_id: str | None = None,

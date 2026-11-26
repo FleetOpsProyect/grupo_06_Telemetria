@@ -27,6 +27,16 @@ class RouteModel(Base):
     longitud_origen: Mapped[float] = mapped_column(
         Numeric(10, 6, asdecimal=False), nullable=False, default=-76.5320
     )
+    # HU-03: datos del cierre (nulos mientras la ruta está EN_CURSO)
+    latitud_destino: Mapped[float | None] = mapped_column(
+        Numeric(10, 6, asdecimal=False), nullable=True
+    )
+    longitud_destino: Mapped[float | None] = mapped_column(
+        Numeric(10, 6, asdecimal=False), nullable=True
+    )
+    distancia_recorrida_km: Mapped[float | None] = mapped_column(
+        Numeric(10, 2, asdecimal=False), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

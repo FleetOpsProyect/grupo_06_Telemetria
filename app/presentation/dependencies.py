@@ -3,6 +3,7 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from app.application.services.finish_service import FinishRouteService
 from app.application.services.route_service import RouteService
 from app.application.services.start_service import StartRouteService
 from app.domain.ports.event_publisher import IEventPublisher
@@ -70,5 +71,18 @@ def get_start_route_service(
         route_repo=route_repo,
         outbox_repo=outbox_repo,
         assignments_client=assignments_client,
+        unit_of_work=unit_of_work,
+    )
+
+
+def get_finish_route_service(
+    route_repo: IRouteRepository = Depends(get_route_repository),
+    outbox_repo: IOutboxRepository = Depends(get_outbox_repository),
+    unit_of_work: IUnitOfWork = Depends(get_unit_of_work),
+) -> FinishRouteService:
+    """Instancia el servicio transaccional de finalización de ruta (HU-03)."""
+    return FinishRouteService(
+        route_repo=route_repo,
+        outbox_repo=outbox_repo,
         unit_of_work=unit_of_work,
     )
