@@ -63,4 +63,3 @@ class RouteDetailDTO(RouteSummaryDTO):
                 else None
             ),
         )
-

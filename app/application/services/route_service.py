@@ -98,8 +98,9 @@ class RouteService:
             size=size,
             total=total,
         )
-    def get_route_detail(self,route_id: str)-> RouteDetailDTO:
-        """consulta el detalle completo de una ruta """
+
+    def get_route_detail(self, route_id: str) -> RouteDetailDTO:
+        """consulta el detalle completo de una ruta"""
         route = self.route_repo.get_by_id(route_id)
         if not route:
             raise EntityNotFoundError(

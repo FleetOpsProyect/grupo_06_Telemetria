@@ -1,6 +1,8 @@
 from datetime import date
 from typing import Any
+
 from fastapi import APIRouter, Depends, Query, status
+
 from app.application.dtos.common import ErrorResponse, PaginatedResponse
 from app.application.dtos.route_query import RouteDetailDTO, RouteSummaryDTO
 from app.application.services.route_service import RouteService
@@ -9,6 +11,7 @@ from app.domain.models.route import RouteStatus
 from app.presentation.dependencies import get_route_service
 
 router = APIRouter(prefix="/route", tags=["Rutas"])
+
 
 @router.get(
     "",
@@ -20,9 +23,9 @@ router = APIRouter(prefix="/route", tags=["Rutas"])
         400: {"model": ErrorResponse, "description": "DATOS_INVALIDOS"},
         503: {"model": ErrorResponse, "description": "SERVICIO_NO_DISPONIBLE"},
     },
-    )
+)
 def listar_rutas(
-    asignacion_id: str|None = Query(default=None,min_length=1),
+    asignacion_id: str | None = Query(default=None, min_length=1),
     vehiculo_id: str | None = Query(default=None, min_length=1),
     estado: RouteStatus | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
@@ -34,13 +37,14 @@ def listar_rutas(
 ) -> PaginatedResponse[RouteSummaryDTO]:
     return service.list_routes(
         asignacion_id=asignacion_id,
-            vehiculo_id=vehiculo_id,
-            estado=estado,
-            fecha_desde=fecha_desde.isoformat() if fecha_desde else None,
-            fecha_hasta=fecha_hasta.isoformat() if fecha_hasta else None,
-            page=page,
-            size=size,
+        vehiculo_id=vehiculo_id,
+        estado=estado,
+        fecha_desde=fecha_desde.isoformat() if fecha_desde else None,
+        fecha_hasta=fecha_hasta.isoformat() if fecha_hasta else None,
+        page=page,
+        size=size,
     )
+
 
 @router.get(
     "/{route_id}",
