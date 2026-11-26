@@ -228,22 +228,24 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
+
 @dataclass(frozen=True)
 class Coordenada:
     latitud: float
     longitud: float
+
 
 @dataclass(frozen=True)
 class ResultadoSimulacion:
     destino: Coordenada
     distancia_recorrida_km: float
 
+
 class IGeoLocationProvider(ABC):
     @abstractmethod
     def calcular_ruta(
         self, origen: Coordenada, inicio: datetime, fin: datetime
-    ) -> ResultadoSimulacion:
-        ...
+    ) -> ResultadoSimulacion: ...
 ```
 
 Actualmente opera la implementación `HaversineSimulationStrategy` ($R = 6371.0\text{ km}$, radio simulado `5–25 km`, mínimo de salvaguarda `0.50 km` si duración `< 1 min`). Si en el futuro se incorporan dispositivos GPS reales, basta implementar `GpsHardwareProvider` sin alterar controladores, tablas ni eventos.
