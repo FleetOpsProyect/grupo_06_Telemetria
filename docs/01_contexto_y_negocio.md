@@ -51,7 +51,7 @@ flowchart TD
 
     subgraph "Dependencias Síncronas Externas"
         MS_ASIG_REST[MS Asignaciones: GET /asignaciones/id]
-        MS_REP[MS Reportes Operativos: GET /rutas]
+        MS_REP[MS Reportes Operativos: GET /routes]
     end
 
     subgraph "Broker de Mensajería (RabbitMQ: fleetops.events)"
@@ -67,7 +67,7 @@ flowchart TD
     end
 
     %% Flujo Inicio
-    C -->|POST /rutas/iniciar| GW
+    C -->|POST /routes/start| GW
     GW --> API_TR
     API_TR --> SVC_TR
     SVC_TR -->|GET /asignaciones/{id} síncrono con Circuit Breaker| MS_ASIG_REST
@@ -83,7 +83,7 @@ flowchart TD
     TOPIC_EX -.-> MS_COMB
 
     %% Flujo Fin de Ruta
-    C -->|POST /rutas| GW
+    C -->|POST /routes| GW
     GW --> API_TR
     SVC_TR -->|Simulación Haversine & Persistencia FINALIZADA| BD_TR
     SVC_TR -->|Publica telemetria.ruta.finalizada via Outbox| TOPIC_EX
@@ -96,7 +96,7 @@ flowchart TD
     CONS_TR -->|Publica telemetria.ruta.finalizada estado: INTERRUMPIDA| TOPIC_EX
 
     %% Flujo Consultas
-    MS_REP -->|GET /rutas con filtros y paginación| GW
+    MS_REP -->|GET /routes con filtros y paginación| GW
 ```
 
 ---
@@ -105,7 +105,7 @@ flowchart TD
 
 ### 5.1. Flujo 1: Inicio de Ruta (Síncrono + Emisión de Evento)
 1. **Acción del Conductor:** El conductor entra en su aplicación y presiona **"Iniciar Ruta"** en una asignación activa.
-2. **Petición HTTP:** El frontend envía `POST /rutas/iniciar` con `{ "asignacion_id": "asig-8472" }`.
+2. **Petición HTTP:** El frontend envía `POST /routes/start` con `{ "asignacion_id": "asig-8472" }`.
    * *Importante:* El frontend **no** envía coordenadas GPS; únicamente emite la orden de inicio.
 3. **Validación Externa con Asignaciones:** Telemetría realiza una petición HTTP síncrona `GET /asignaciones/{id}`:
    * Si responde `404`: devuelve `404 ASIGNACION_NO_ENCONTRADA`.
@@ -129,7 +129,7 @@ sequenceDiagram
     participant BD as BD Telemetría
     participant RabbitMQ as Broker (fleetops.events)
 
-    Conductor->>GW: POST /rutas/iniciar { asignacion_id }
+    Conductor->>GW: POST /routes/start { asignacion_id }
     GW->>Telemetria: Reenvía petición autenticada
     Telemetria->>Asignaciones: GET /asignaciones/{id} (Timeout 2s)
     alt Asignación no existe (404)
@@ -172,7 +172,7 @@ sequenceDiagram
 
 ### 5.3. Flujo 3: Fin de Ruta y Simulación Geoespacial
 1. **Acción del Conductor:** El conductor llega a su destino y presiona **"Terminar Ruta"**.
-2. **Petición HTTP:** `POST /rutas` con `{ "asignacion_id": "asig-8472" }`.
+2. **Petición HTTP:** `POST /routes` con `{ "asignacion_id": "asig-8472" }`.
 3. **Validación:**
    * Busca la ruta activa asociada en la base de datos local.
    * Si no existe: `404 RUTA_NO_ENCONTRADA`.
@@ -214,7 +214,7 @@ sequenceDiagram
 ---
 
 ### 5.5. Flujo 5: Auditoría Gerencial y Soporte a Reportes Operativos
-1. **Petición:** `GET /rutas` con filtros (`asignacion_id`, `vehiculo_id`, `estado`, `fecha_desde`, `fecha_hasta`, `page`, `size`).
+1. **Petición:** `GET /routes` con filtros (`asignacion_id`, `vehiculo_id`, `estado`, `fecha_desde`, `fecha_hasta`, `page`, `size`).
 2. **Requisitos de rendimiento:** El MS Reportes Operativos consulta este endpoint síncronamente durante su proceso de agregación paralela de KPIs (`distancia_total_recorrida_km`, `rutas_en_curso`).
 3. El endpoint debe responder en **menos de 1.0 segundo** respaldado por índices compuestos sobre `(estado, hora_inicio)`.
 4. Retorna paginación normalizada con `contenido`, `page`, `size` y `total`.

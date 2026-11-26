@@ -1,4 +1,4 @@
-"""Tests de integración HU-01: POST /api/v1/rutas/iniciar con SQLite en memoria."""
+"""Tests de integración HU-01: POST /api/v1/routes/start con SQLite en memoria."""
 
 import json
 from collections.abc import Generator
@@ -14,7 +14,7 @@ from app.infrastructure.db.orm_models import OutboxModel, RouteModel
 from app.main import app
 from app.presentation.dependencies import get_assignments_client
 
-URL = "/api/v1/rutas/iniciar"
+URL = "/api/v1/routes/start"
 
 
 class FakeAssignmentsClient(IAssignmentsClient):
@@ -61,7 +61,7 @@ def test_201_y_get_posterior_devuelve_los_mismos_datos(
     assert (created["vehiculo_id"], created["conductor_id"]) == ("veh-501", "cond-101")
     assert created["coordenada_origen"] == {"latitud": 3.4516, "longitud": -76.532}
 
-    fetched = client.get(f"/api/v1/rutas/{created['id']}")
+    fetched = client.get(f"/api/v1/routes/{created['id']}")
     assert fetched.status_code == 200
     assert fetched.json() == created
 

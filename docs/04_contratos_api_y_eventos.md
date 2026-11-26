@@ -40,7 +40,7 @@ Todos los errores retornados por la API REST siguen la siguiente estructura JSON
 
 ## 2. Endpoints REST
 
-### 2.1. Iniciar Ruta (`POST /rutas/iniciar`)
+### 2.1. Iniciar Ruta (`POST /routes/start`)
 Inicia formalmente un recorrido fijando la salida en el Centro de Operaciones. Requiere autenticación JWT en Gateway.
 
 * **Headers:** `Content-Type: application/json`, `Authorization: Bearer <jwt_token>`
@@ -74,7 +74,7 @@ Inicia formalmente un recorrido fijando la salida en el Centro de Operaciones. R
 
 ---
 
-### 2.2. Finalizar Ruta (`POST /rutas`)
+### 2.2. Finalizar Ruta (`POST /routes`)
 Registra la orden de cierre de viaje, calcula la distancia simulada (Haversine) y propaga el odómetro. Requiere JWT.
 
 * **Headers:** `Content-Type: application/json`, `Authorization: Bearer <jwt_token>`
@@ -114,7 +114,7 @@ Registra la orden de cierre de viaje, calcula la distancia simulada (Haversine) 
 
 ---
 
-### 2.3. Listar Rutas con Filtros y Paginación (`GET /rutas`)
+### 2.3. Listar Rutas con Filtros y Paginación (`GET /routes`)
 Consulta histórica de rutas para auditoría y soporte a Reportes Operativos. Requiere JWT.
 
 * **Query Parameters (Opcionales):**
@@ -152,7 +152,7 @@ Consulta histórica de rutas para auditoría y soporte a Reportes Operativos. Re
 
 ---
 
-### 2.4. Obtener Detalle de Ruta por ID (`GET /rutas/{id}`)
+### 2.4. Obtener Detalle de Ruta por ID (`GET /routes/{id}`)
 Retorna el detalle completo de una ruta específica, incluyendo coordenadas origen y destino. Requiere JWT.
 
 * **Respuestas:**

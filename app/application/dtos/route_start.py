@@ -1,4 +1,4 @@
-"""DTOS de entrada para iniciar una ruta (HU-01, POST /rutas/iniciar)."""
+"""DTOS de entrada para iniciar una ruta (HU-01, POST /routes/start)."""
 
 from pydantic import BaseModel, ConfigDict, Field
 

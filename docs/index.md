@@ -14,11 +14,11 @@ Bienvenido al repositorio de documentación del microservicio **Telemetría y Ru
    * Flujo de inicio de ruta, verificación de vigencia de ruta en tanqueo, finalización con simulación geoespacial Haversine, interrupción imprevista por incidente y auditoría gerencial.
 
 2. [**02. Product Backlog Refinado (Historias de Usuario)**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/02_product_backlog_historias_usuario.md)
-   * **HU-01:** Iniciar ruta asociada a asignación activa (`POST /rutas/iniciar`, validación síncrona, Circuit Breaker, unicidad 409, evento `telemetria.ruta.iniciada`).
+   * **HU-01:** Iniciar ruta asociada a asignación activa (`POST /routes/start`, validación síncrona, Circuit Breaker, unicidad 409, evento `telemetria.ruta.iniciada`).
    * **HU-02:** Consultar ruta en curso para combustible (Verificación interna, sin llamadas externas, respuesta en < 200 ms P95, DLQ).
-   * **HU-03:** Finalizar ruta activa y calcular distancia simulada (`POST /rutas`, fórmula de Haversine, Transactional Outbox, evento `telemetria.ruta.finalizada`).
+   * **HU-03:** Finalizar ruta activa y calcular distancia simulada (`POST /routes`, fórmula de Haversine, Transactional Outbox, evento `telemetria.ruta.finalizada`).
    * **HU-04:** Procesar interrupción imprevista de asignación por incidente (`AsignacionInterrumpidaEvent`, cálculo de distancia parcial, inmutabilidad de ruta, evento con estado `INTERRUMPIDA`).
-   * **HU-05:** Consultar listado y detalle histórico de rutas (`GET /rutas`, `GET /rutas/{id}`, paginación, filtros, respuesta en < 1.0 s para soporte al Proceso 6 de Reportes Operativos).
+   * **HU-05:** Consultar listado y detalle histórico de rutas (`GET /routes`, `GET /routes/{id}`, paginación, filtros, respuesta en < 1.0 s para soporte al Proceso 6 de Reportes Operativos).
    * **HU-06:** Endpoint de salud y diagnóstico de dependencias (`GET /health`, sondeo no intrusivo a BD relacional y socket RabbitMQ en < 150 ms, público).
 
 3. [**03. Documento de Arquitectura de Software (DAS)**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/03_documento_arquitectura_software_das.md)
@@ -29,7 +29,7 @@ Bienvenido al repositorio de documentación del microservicio **Telemetría y Ru
 
 4. [**04. Contratos de API REST, Eventos y Modelo de Datos**](file:///b:/Projects/Universidad/DSIII/grupo_06_Telemetria/docs/04_contratos_api_y_eventos.md)
    * Catálogo unificado de códigos de error HTTP y payloads de respuesta JSON.
-   * Especificación detallada de endpoints REST (`POST /rutas/iniciar`, `POST /rutas`, `GET /rutas`, `GET /rutas/{id}`, `GET /health`).
+   * Especificación detallada de endpoints REST (`POST /routes/start`, `POST /routes`, `GET /routes`, `GET /routes/{id}`, `GET /health`).
    * Contratos de eventos para el bus RabbitMQ (Exchange `fleetops.events`, sobre estándar, routing keys, eventos emitidos y consumidos).
    * Modelo entidad-relación (ER) y DDL SQL para las tablas `rutas`, `outbox_eventos` y `eventos_procesados`.
 
