@@ -113,7 +113,7 @@ def test_get_posterior_muestra_la_ruta_finalizada(client: TestClient, db_session
     route = _seed(db_session, "asig-get")
     client.post(URL, json={"asignacion_id": "asig-get"})
 
-    response = client.get(f"/api/v1/rutas/{route.id}")
+    response = client.get(f"/api/v1/routes/{route.id}")
 
     assert response.json()["estado"] == RouteStatus.FINALIZADA.value
 
